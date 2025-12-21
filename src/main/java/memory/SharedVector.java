@@ -9,58 +9,106 @@ public class SharedVector {
     private ReadWriteLock lock = new java.util.concurrent.locks.ReentrantReadWriteLock();
 
     public SharedVector(double[] vector, VectorOrientation orientation) {
-        // TODO: store vector data and its orientation
+       this.vector = vector;
+       this.orientation = orientation;
     }
 
     public double get(int index) {
-        // TODO: return element at index (read-locked)
-        return 0;
+        readLock();
+        double value = vector[index];
+        readUnlock();
+        return value;
     }
 
     public int length() {
-        // TODO: return vector length
-        return 0;
+        readLock();
+        int len = vector.length;
+        readUnlock();
+        return len;
     }
 
     public VectorOrientation getOrientation() {
-        // TODO: return vector orientation
-        return null;
+        readLock();
+        VectorOrientation ori = orientation;
+        readUnlock();
+        return ori;
     }
 
     public void writeLock() {
-        // TODO: acquire write lock
+        lock.writeLock().lock();
     }
 
     public void writeUnlock() {
-        // TODO: release write lock
+        lock.writeLock().unlock();
     }
 
     public void readLock() {
-        // TODO: acquire read lock
+        lock.readLock().lock();
     }
 
     public void readUnlock() {
-        // TODO: release read lock
+        lock.readLock().unlock();
     }
 
     public void transpose() {
-        // TODO: transpose vector
+        readLock();
+        if (orientation == VectorOrientation.ROW_MAJOR) {
+            readUnlock();
+            writeLock();
+            orientation = VectorOrientation.COLUMN_MAJOR;
+            writeUnlock();
+        } else {
+            readUnlock();
+            writeLock();
+            orientation = VectorOrientation.ROW_MAJOR;
+            writeUnlock();
+        }
     }
 
     public void add(SharedVector other) {
-        // TODO: add two vectors
+        readLock();
+        if (other.length() == this.length()) {
+            readUnlock();
+            writeLock();
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] += other.get(i);
+            }
+            writeUnlock();
+        }
     }
 
     public void negate() {
-        // TODO: negate vector
+        writeLock();
+        for (int i = 0; i < vector.length; i++) {
+            vector[i] = -vector[i];
+        }
+        writeUnlock();
     }
 
     public double dot(SharedVector other) {
-        // TODO: compute dot product (row · column)
-        return 0;
+        double result = 0.0;
+        readLock();
+        if(this.orientation != other.orientation && this.length() == other.length()) {
+            readUnlock();
+            writeLock();
+            for (int i = 0; i < vector.length; i++) {
+                result += this.vector[i] * other.get(i);
+            }
+            writeUnlock();
+        }
+        return result;   
     }
 
     public void vecMatMul(SharedMatrix matrix) {
-        // TODO: compute row-vector × matrix
+        readLock();
+        if (matrix.getOrientation() == VectorOrientation.ROW_MAJOR && this.length() == matrix.length()) {
+            readUnlock();
+            writeLock();
+            double[] temp = this.vector.clone();
+            for(int i=0; i < matrix.length(); i++) {
+                
+            }
+            
+        }
     }
 }
