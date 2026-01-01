@@ -66,14 +66,15 @@ public class SharedVector {
     }
 
     public void add(SharedVector other) {
-        readLock();
-        if (other.length() == this.length()) {
-            readUnlock();
+        if (other != null &&other.length() == this.length()) {
             writeLock();
+            other.readLock();
             for (int i = 0; i < vector.length; i++) {
                 vector[i] += other.get(i);
             }
-            writeUnlock();
+            other.readUnlock();
+                    writeUnlock();
+
         }
     }
 
@@ -87,28 +88,58 @@ public class SharedVector {
 
     public double dot(SharedVector other) {
         double result = 0.0;
-        readLock();
-        if(this.orientation != other.orientation && this.length() == other.length()) {
-            readUnlock();
+        
+        if(other != null && this.length() == other.length()) {
             writeLock();
+            other.readLock();
             for (int i = 0; i < vector.length; i++) {
                 result += this.vector[i] * other.get(i);
             }
+            other.readUnlock();
             writeUnlock();
         }
+        
         return result;   
     }
 
     public void vecMatMul(SharedMatrix matrix) {
-        readLock();
-        if (matrix.getOrientation() == VectorOrientation.ROW_MAJOR && this.length() == matrix.length()) {
-            readUnlock();
-            writeLock();
-            double[] temp = this.vector.clone();
-            for(int i=0; i < matrix.length(); i++) {
-                
+        writeLock();
+        if (matrix != null && matrix.getOrientation() == VectorOrientation.ROW_MAJOR && this.length() == matrix.length()) {
+            double[] temp = new double[vector.length];
+            for(int i=0; i < vector.length; i++) {
+                temp[i] = 0;
             }
-            
+            for(int i=0; i < matrix.length(); i++) {
+                matrix.get(i).readLock();
+                for(int j=0; j < matrix.get(i).length(); j++) {
+                    temp[i] += vector[j] * matrix.get(j).get(i);
+                }
+                matrix.get(i).readUnlock();
+            }
+            for(int i=0; i < vector.length; i++) {
+                this.vector[i] = temp[i];
+            }
+            writeUnlock();
+            return;
+        }
+        else if(matrix != null && matrix.getOrientation() == VectorOrientation.COLUMN_MAJOR && 
+        this.length() == matrix.get(0).length()) {
+            double[] temp = new double[vector.length];
+            for(int i=0; i < vector.length; i++) {
+                temp[i] = 0;
+            }
+            for(int i=0; i < matrix.length(); i++) {
+                matrix.get(i).readLock();
+                for(int j=0; j < matrix.get(i).length(); j++) {
+                    temp[i] += vector[j] * matrix.get(i).get(j);
+                }
+                matrix.get(i).readUnlock();
+            }
+            for(int i=0; i < vector.length; i++) {
+                this.vector[i] = temp[i];
+            }
+            writeUnlock();
+            return;
         }
     }
 }

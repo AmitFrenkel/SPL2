@@ -9,56 +9,57 @@ public class SharedMatrix {
     }
 
     public SharedMatrix(double[][] matrix) {
-        vectors = new SharedVector[matrix.length];
-        for (int i = 0; i < matrix.length; i++) {
-            vectors[i] = new SharedVector(matrix[i], VectorOrientation.ROW_MAJOR);
-        }
+        loadRowMajor(matrix);
     }
 
     public void loadRowMajor(double[][] matrix) {
-        acquireAllVectorWriteLocks(vectors);
-        for (int i = 0; i < matrix.length; i++) {
-            vectors[i] = new SharedVector(matrix[i], VectorOrientation.ROW_MAJOR);
+        if (matrix != null) {
+            vectors = new SharedVector[matrix.length];
+            for (int i = 0; i < matrix.length; i++) {
+                vectors[i] = new SharedVector(matrix[i], VectorOrientation.ROW_MAJOR);
+            }
+
         }
-        releaseAllVectorWriteLocks(vectors);
     }
 
     public void loadColumnMajor(double[][] matrix) {
-        acquireAllVectorWriteLocks(vectors);
-        for (int i = 0; i < matrix.length; i++) {
-            double[] col = new double[matrix.length];
-            for (int j = 0; j < matrix.length; j++) {
-                col[j] = matrix[j][i];
+        double[][] result = new double[matrix[0].length][matrix.length];
+        for(int i=0; i < matrix[0].length; i++) {
+            for(int j=0; j < matrix.length; j++) {
+                result[i][j] = matrix[j][i];
             }
-            vectors[i] = new SharedVector(col, VectorOrientation.COLUMN_MAJOR);
         }
-        releaseAllVectorWriteLocks(vectors);
-        // לבדוק מה זה מה
-        // dor
+        this.vectors = new SharedVector[result.length];
+        for (int i = 0; i < result.length; i++) {
+            vectors[i] = new SharedVector(result[i], VectorOrientation.COLUMN_MAJOR);
+        }
     }
 
     public double[][] readRowMajor() {
-        acquireAllVectorReadLocks(vectors);
-        if(getOrientation() == VectorOrientation.ROW_MAJOR){
-            double[][] result = new double[length()][vectors[0].length()];
-            for (int i = 0; i < vectors.length; i++) {
-                for (int j = 0; j < vectors[i].length(); j++) {
-                    result[i][j] = vectors[i].get(j);
+        if (length() > 0) {
+            acquireAllVectorReadLocks(vectors);
+            if(getOrientation() == VectorOrientation.ROW_MAJOR){
+                double[][] result = new double[length()][vectors[0].length()];
+                for (int i = 0; i < vectors.length; i++) {
+                    for (int j = 0; j < vectors[i].length(); j++) {
+                        result[i][j] = vectors[i].get(j);
+                    }
                 }
+                releaseAllVectorReadLocks(vectors);
+                return result;
             }
-            releaseAllVectorReadLocks(vectors);
-            return result;
-        }
-        else{
-            double[][] result = new double[vectors[0].length()][length()];
-            for(int i=0; i < vectors[0].length(); i++) {
-                for(int j=0; j < vectors.length; j++) {
-                    result[i][j] = vectors[j].get(i);
+            else{
+                double[][] result = new double[vectors[0].length()][length()];
+                for(int i=0; i < vectors[0].length(); i++) {
+                    for(int j=0; j < vectors.length; j++) {
+                        result[i][j] = vectors[j].get(i);
+                    }
                 }
+                releaseAllVectorReadLocks(vectors);
+                return result;
             }
-            releaseAllVectorReadLocks(vectors);
-            return result;
         }
+        return new double[0][0];
     }
 
     public SharedVector get(int index) {
@@ -73,7 +74,10 @@ public class SharedMatrix {
     }
 
     public VectorOrientation getOrientation() {
-        return vectors[0].getOrientation();
+        vectors[0].readLock();
+        VectorOrientation ori = vectors[0].getOrientation();
+        vectors[0].readUnlock();
+        return ori;
     }
 
     private void acquireAllVectorReadLocks(SharedVector[] vecs) {
