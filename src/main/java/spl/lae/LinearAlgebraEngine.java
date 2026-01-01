@@ -40,6 +40,9 @@ public class LinearAlgebraEngine {
         List<Runnable> tasks= null;
         switch(node.getNodeType()){
             case ADD:
+                if (node.getChildren().size() != 2) {
+                    throw new IllegalArgumentException("Add operation requires two operands.");
+                }
                 leftMatrix = new SharedMatrix(node.getChildren().get(0).getMatrix());
                 rightMatrix = new SharedMatrix(node.getChildren().get(1).getMatrix());
                 if (leftMatrix.length() != rightMatrix.length() ||
@@ -51,6 +54,9 @@ public class LinearAlgebraEngine {
                     tasks = createAddTasks();
                 break;
             case MULTIPLY:
+                if (node.getChildren().size() != 2) {
+                    throw new IllegalArgumentException("Multiply operation requires two operands.");
+                }
                 leftMatrix = new SharedMatrix(node.getChildren().get(0).getMatrix()); 
                 rightMatrix = new SharedMatrix();
                 rightMatrix.loadColumnMajor(node.getChildren().get(1).getMatrix());
@@ -61,10 +67,16 @@ public class LinearAlgebraEngine {
                     tasks = createMultiplyTasks();
                 break;
             case NEGATE:
+                if (node.getChildren().size() > 1) {
+                    throw new IllegalArgumentException("Negate operation takes only one operand.");
+                }
                 leftMatrix = new SharedMatrix(node.getChildren().get(0).getMatrix());
                 tasks = createNegateTasks();
                 break;
             case TRANSPOSE:
+                if (node.getChildren().size() > 1) {
+                    throw new IllegalArgumentException("Transpose operation takes only one operand.");
+                }
                 leftMatrix = new SharedMatrix(node.getChildren().get(0).getMatrix());
                 tasks = createTransposeTasks();
                 break;
@@ -89,13 +101,15 @@ public class LinearAlgebraEngine {
         final int m = A.length(); 
         final int n = B.length(); 
         final double[][] result = new double[m][n];
-        for (int i = 0; i < m; i++) {
-            final int row = i;
+        for (int i = 0; i < m; i++) { 
+        final int row = i;
+        tasks.add(() -> {
+            SharedVector vecA = A.get(row);
             for (int j = 0; j < n; j++) {
-                final int col = j;
-                tasks.add(() -> result[row][col] = A.get(row).dot(B.get(col)));
+                result[row][j] = vecA.dot(B.get(j));
             }
-        }
+        });
+    }
     leftMatrix = new SharedMatrix(result);
     return tasks;
     }
